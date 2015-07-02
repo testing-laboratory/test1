@@ -1,4 +1,0 @@
-[submodule "deps/strapdown"]
-	path = deps/strapdown
-	url = https://github.com/arturadib/strapdown.git
-	branch = gh-pages
