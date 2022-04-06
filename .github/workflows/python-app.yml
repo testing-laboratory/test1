@@ -67,4 +67,15 @@ jobs:
         image: alpine:latest
         run: wget -S https://vezha.com/images/vezha/vezha_logo4_vesna.png
 
-# ping 8.8.8.8 -c 4
+
+  dock_ping:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: Test docker ping
+      uses: addnab/docker-run-action@v3
+      with:
+        image: alpine:latest
+        run: ping vezha.com -c 8
