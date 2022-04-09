@@ -1,0 +1,11 @@
+FROM alpine
+
+RUN date
+
+ENV MYENV=123
+
+RUN date
+
+ENV MYENV2=54321
+
+RUN date
