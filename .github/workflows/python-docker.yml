@@ -57,7 +57,16 @@ jobs:
           echo ========================
           docker image ls
           echo ========================
+          # --cache-to type=local,dest=/tmp/.buildx-cache-new,mode=max
           docker buildx build \
+            --cache-from type=local,src=/tmp/.buildx-cache \
+            --file ./Dockerfile \
+            --tag myapp:latest \
+            .
+          echo ========================
+          docker image ls
+          echo ========================
+          docker build \
             --cache-from type=local,src=/tmp/.buildx-cache \
             --file ./Dockerfile \
             --tag myapp:latest \
