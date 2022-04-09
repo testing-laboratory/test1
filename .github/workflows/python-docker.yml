@@ -34,8 +34,8 @@ jobs:
           file: ./Dockerfile
           pull: false
           push: false
+          load: true
           tags: myapp:latest
-          output: type=docker
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max
         # This ugly bit is necessary if you don't want your cache to grow forever
