@@ -12,7 +12,7 @@ permissions:
 
 jobs:
 
-  run-unit-tests:
+  build-n-run-container:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
