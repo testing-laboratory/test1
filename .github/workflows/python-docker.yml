@@ -42,12 +42,27 @@ jobs:
         # Temp fix
         # https://github.com/docker/build-push-action/issues/252
         # https://github.com/moby/buildkit/issues/1896
-      - name: Run code
-        uses: addnab/docker-run-action@v3
-        with:
-          image: myapp:latest
-          run: wget -S https://en.wikipedia.org/static/favicon/wikipedia.ico
+      #- name: Run code
+      #  uses: addnab/docker-run-action@v3
+      #  with:
+      #    image: myapp:latest
+      #    run: wget -S https://en.wikipedia.org/static/favicon/wikipedia.ico
       - name: Update and save Docker cache
         run: |
           rm -rf -- /tmp/.buildx-cache
           mv -- /tmp/.buildx-cache-new /tmp/.buildx-cache
+
+      - name: Build 2
+        run: |
+          echo ========================
+          docker image ls
+          echo ========================
+          docker buildx build \
+            --cache-from type=local,src=/tmp/.buildx-cache \
+            --cache-to type=local,dest=/tmp/.buildx-cache-new,mode=max \
+            --file ./Dockerfile \
+            --tag myapp:latest \
+            .
+          echo ========================
+          docker image ls
+          echo ========================
