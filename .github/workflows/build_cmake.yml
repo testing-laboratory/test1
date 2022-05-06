@@ -1,0 +1,198 @@
+# Original URL of `build_cmake.yml`:
+# https://github.com/cristianadam/HelloWorld/blob/c4d9676dc11927936d7840cf60d33af6f53ba62e/.github/workflows/build_cmake.yml
+
+name: CMake Build Matrix
+
+on: [push, pull_request]
+
+env:
+  CMAKE_VERSION: 3.23.0
+  NINJA_VERSION: 1.10.2
+  BUILD_TYPE: Release
+
+  CMAKE_EXECUTE_PROCESS_COMMAND_ECHO: STDOUT
+
+jobs:
+  build:
+    name: ${{ matrix.config.name }}
+    runs-on: ${{ matrix.config.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+        - {
+            name: "Windows Latest MSVC", artifact: "Windows-MSVC.7z",
+            os: windows-latest,
+            cc: "cl", cxx: "cl",
+            environment_script: "C:/Program Files/Microsoft Visual Studio/2022/Enterprise/VC/Auxiliary/Build/vcvars64.bat"
+          }
+        # 2020-05-05: MinGW is disabled because latest gcc is not able to build my C++20 code
+#        - {
+#            name: "Windows Latest MinGW", artifact: "Windows-MinGW.7z",
+#            os: windows-latest,
+#            cc: "gcc", cxx: "g++"
+#          }
+        # 2020-05-05: Linux is disabled because latest gcc is not able to build my C++20 code
+        # and Linux's stdlib is not compatible with C++20 enough even with Clang.
+#        - {
+#            name: "Ubuntu Latest GCC", artifact: "Linux.7z",
+#            os: ubuntu-latest,
+#            cc: "gcc", cxx: "g++"
+#          }
+#        - {
+#            name: "macOS Latest Clang", artifact: "macOS.7z",
+#            os: macos-latest,
+#            cc: "clang", cxx: "clang++"
+#          }
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Download Ninja and CMake
+      shell: cmake -P {0}
+      run: |
+        set(cmake_version $ENV{CMAKE_VERSION})
+        set(ninja_version $ENV{NINJA_VERSION})
+
+        message(STATUS "Using host CMake version: ${CMAKE_VERSION}")
+
+        if ("${{ runner.os }}" STREQUAL "Windows")
+          set(ninja_suffix "win.zip")
+          set(cmake_suffix "windows-x86_64.zip")
+          set(cmake_dir "cmake-${cmake_version}-windows-x86_64/bin")
+        elseif ("${{ runner.os }}" STREQUAL "Linux")
+          set(ninja_suffix "linux.zip")
+          set(cmake_suffix "linux-x86_64.tar.gz")
+          set(cmake_dir "cmake-${cmake_version}-linux-x86_64/bin")
+        elseif ("${{ runner.os }}" STREQUAL "macOS")
+          set(ninja_suffix "mac.zip")
+          set(cmake_suffix "macos-universal.tar.gz")
+          set(cmake_dir "cmake-${cmake_version}-macos-universal/CMake.app/Contents/bin")
+        endif()
+
+        file(MAKE_DIRECTORY $ENV{RUNNER_TEMP}/bin)
+
+        set(ninja_url "https://github.com/ninja-build/ninja/releases/download/v${ninja_version}/ninja-${ninja_suffix}")
+        file(DOWNLOAD "${ninja_url}" $ENV{RUNNER_TEMP}/ninja.zip SHOW_PROGRESS)
+        execute_process(
+          COMMAND_ERROR_IS_FATAL ANY
+          WORKING_DIRECTORY $ENV{RUNNER_TEMP}/bin
+          COMMAND ${CMAKE_COMMAND} -E tar xvf $ENV{RUNNER_TEMP}/ninja.zip
+        )
+
+        set(cmake_url "https://github.com/Kitware/CMake/releases/download/v${cmake_version}/cmake-${cmake_version}-${cmake_suffix}")
+        file(DOWNLOAD "${cmake_url}" $ENV{RUNNER_TEMP}/cmake.zip SHOW_PROGRESS)
+        execute_process(
+          COMMAND_ERROR_IS_FATAL ANY
+          WORKING_DIRECTORY $ENV{RUNNER_TEMP}
+          COMMAND ${CMAKE_COMMAND} -E tar xvf $ENV{RUNNER_TEMP}/cmake.zip
+        )
+
+        # Add to PATH environment variable
+        file(TO_CMAKE_PATH "$ENV{RUNNER_TEMP}/${cmake_dir}" cmake_dir)
+        set(path_separator ":")
+        if ("${{ runner.os }}" STREQUAL "Windows")
+          set(path_separator ";")
+        endif()
+        file(APPEND "$ENV{GITHUB_PATH}" "$ENV{RUNNER_TEMP}/bin${path_separator}${cmake_dir}")
+
+        if (NOT "${{ runner.os }}" STREQUAL "Windows")
+          execute_process(
+            COMMAND_ERROR_IS_FATAL ANY
+            COMMAND chmod +x $ENV{RUNNER_TEMP}/bin/ninja
+            COMMAND chmod +x ${cmake_dir}/cmake
+          )
+        endif()
+
+    - name: Set up cache directory for Hunter package manager
+      uses: actions/cache@v3
+      with:
+        path: ${{ runner.temp }}/.hunter-cache
+        key: ${{ runner.os }}-hunter-v1-${{ hashFiles('**/CMakeLists.txt', '**/*.cmake') }}
+        restore-keys: |
+          ${{ runner.os }}-hunter-v1-${{ hashFiles('**/CMakeLists.txt', '**/*.cmake') }}
+          ${{ runner.os }}-hunter-v1
+
+    - name: List directories for debugging
+      shell: bash
+      run: |
+        set -x
+        echo =================================
+        ls -la "$RUNNER_TEMP"
+        echo =================================
+        ls -la "$RUNNER_TEMP/bin"
+        echo =================================
+        ls -la "$GITHUB_WORKSPACE"
+        echo =================================
+
+    - name: Configure
+      shell: cmake -P {0}
+      run: |
+        set(ENV{CC} ${{ matrix.config.cc }})
+        set(ENV{CXX} ${{ matrix.config.cxx }})
+
+        set(ENV{HUNTER_ROOT} "${{ runner.temp }}/.hunter-cache")
+        message(STATUS "HUNTER_ROOT: $ENV{HUNTER_ROOT}")
+
+        if ("${{ runner.os }}" STREQUAL "Windows" AND NOT "x${{ matrix.config.environment_script }}" STREQUAL "x")
+          execute_process(
+            COMMAND_ERROR_IS_FATAL ANY
+            COMMAND "${{ matrix.config.environment_script }}" && set
+            OUTPUT_FILE environment_script_output.txt
+          )
+          file(STRINGS environment_script_output.txt output_lines)
+          foreach(line IN LISTS output_lines)
+            if (line MATCHES "^([a-zA-Z0-9_-]+)=(.*)$")
+              set(ENV{${CMAKE_MATCH_1}} "${CMAKE_MATCH_2}")
+            endif()
+          endforeach()
+        endif()
+
+        set(path_separator ":")
+        if ("${{ runner.os }}" STREQUAL "Windows")
+          set(path_separator ";")
+        endif()
+        set(ENV{PATH} "$ENV{RUNNER_TEMP}/bin${path_separator}$ENV{PATH}")
+
+        set(ENV{VSCMD_DEBUG} "3") # ???????????????????????????????????????????????????
+
+        execute_process(
+          COMMAND cmake
+            -S .
+            -B $ENV{RUNNER_TEMP}/build
+            -D CMAKE_BUILD_TYPE=$ENV{BUILD_TYPE}
+            -G Ninja
+            -D CMAKE_MAKE_PROGRAM=ninja
+          RESULT_VARIABLE result
+        )
+        if (NOT result EQUAL 0)
+          message(FATAL_ERROR "Bad exit status")
+        endif()
+
+    - name: Build
+      shell: cmake -P {0}
+      run: |
+        set(ENV{NINJA_STATUS} "[%f/%t %o/sec] ")
+
+        if ("${{ runner.os }}" STREQUAL "Windows" AND NOT "x${{ matrix.config.environment_script }}" STREQUAL "x")
+          file(STRINGS environment_script_output.txt output_lines)
+          foreach(line IN LISTS output_lines)
+            if (line MATCHES "^([a-zA-Z0-9_-]+)=(.*)$")
+              set(ENV{${CMAKE_MATCH_1}} "${CMAKE_MATCH_2}")
+            endif()
+          endforeach()
+        endif()
+
+        execute_process(
+          COMMAND cmake --build $ENV{RUNNER_TEMP}/build
+          RESULT_VARIABLE result
+          OUTPUT_VARIABLE output
+          ERROR_VARIABLE output
+          ECHO_OUTPUT_VARIABLE ECHO_ERROR_VARIABLE
+        )
+        if (NOT result EQUAL 0)
+          string(REGEX MATCH "FAILED:.*$" error_message "${output}")
+          string(REPLACE "\n" "%0A" error_message "${error_message}")
+          message("::error::${error_message}")
+          message(FATAL_ERROR "Build failed")
+        endif()
