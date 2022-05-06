@@ -10,8 +10,6 @@ env:
   NINJA_VERSION: 1.10.2
   BUILD_TYPE: Release
 
-  CMAKE_EXECUTE_PROCESS_COMMAND_ECHO: STDOUT
-
 jobs:
   build:
     name: ${{ matrix.config.name }}
