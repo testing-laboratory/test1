@@ -13,17 +13,28 @@ jobs:
     - name: Setup MSVC environment
       shell: cmd
       run: |
+        echo =================================
+        echo === Environment BEFORE MSVC:
+        echo =================================
+        set
+        echo =================================
         call "C:/Program Files/Microsoft Visual Studio/2022/Enterprise/VC/Auxiliary/Build/vcvars64.bat"
-        set >> $GITHUB_ENV
+        set >> "%GITHUB_ENV%"
+        echo =================================
+        echo === Environment AFTER MSVC:
+        echo =================================
+        set
+        echo =================================
 
     - name: Configure
       shell: bash
       run: |
         set -e
-        echo ===========================
+        echo =================================
         env | sort
-        echo ===========================
+        echo =================================
         set -x
+
         cmake \
             -S . \
             -B $RUNNER_TEMP/build \
