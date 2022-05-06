@@ -132,6 +132,8 @@ jobs:
         file(TO_CMAKE_PATH "$ENV{RUNNER_TEMP}" runner_temp)
         set(ENV{HUNTER_ROOT} "${runner_temp}/.hunter-cache")
         message(STATUS "HUNTER_ROOT: $ENV{HUNTER_ROOT}")
+        set(ENV{HUNTER_ROOT} $ENV{RUNNER_TEMP}/.hunter-cache)
+        message(STATUS "HUNTER_ROOT: $ENV{HUNTER_ROOT}")
 
         if ("${{ runner.os }}" STREQUAL "Windows" AND NOT "x${{ matrix.config.environment_script }}" STREQUAL "x")
           execute_process(
