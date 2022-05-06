@@ -10,57 +10,22 @@ jobs:
     steps:
     - uses: actions/checkout@v2
 
-    - name: DDDDDDDDDDDDD
-      shell: cmake -P {0}
-      run: |
-        execute_process(COMMAND set)
-
-    - name: Configure
+    - name: Setup MSVC environment
       shell: cmd
       run: |
-        echo =====================================
-        set
-        echo =====================================
         call "C:/Program Files/Microsoft Visual Studio/2022/Enterprise/VC/Auxiliary/Build/vcvars64.bat"
-        echo =====================================
-        set
-        echo =====================================
+        set >> $GITHUB_ENV
 
     - name: Configure
-      shell: cmake -P {0}
+      shell: bash
       run: |
-
-        execute_process(COMMAND set)
-
-        execute_process(
-          COMMAND_ERROR_IS_FATAL ANY
-          COMMAND "C:/Program Files/Microsoft Visual Studio/2022/Enterprise/VC/Auxiliary/Build/vcvars64.bat" && set
-          OUTPUT_FILE environment_script_output.txt
-        )
-
-        execute_process(COMMAND set)
-
-        file(STRINGS environment_script_output.txt output_lines)
-        foreach(line IN LISTS output_lines)
-          if (line MATCHES "^([a-zA-Z0-9_-]+)=(.*)$")
-            set(ENV{${CMAKE_MATCH_1}} "${CMAKE_MATCH_2}")
-            message(STATUS "ENV: ${CMAKE_MATCH_1} = ${CMAKE_MATCH_2}")
-          endif()
-        endforeach()
-
-
-        execute_process(COMMAND set)
-
-        message(FATAL_ERROR "TEZD")
-
-        execute_process(
-          COMMAND cmake
-            -S .
-            -B $ENV{RUNNER_TEMP}/build
-            -G "Visual Studio 17 2022"
+        set -e
+        echo ===========================
+        env | sort
+        echo ===========================
+        set -x
+        cmake \
+            -S . \
+            -B $RUNNER_TEMP/build \
+            -G "Visual Studio 17 2022" \
             -A x64
-          RESULT_VARIABLE result
-        )
-        if (NOT result EQUAL 0)
-          message(FATAL_ERROR "Bad exit status")
-        endif()
